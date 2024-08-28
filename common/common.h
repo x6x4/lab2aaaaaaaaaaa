@@ -6,21 +6,22 @@
 #include <ostream>
 #include <algorithm>
 
+#include "../regexTokenizer/regexTokenizer.h"
 
-using charNodeMap = std::map<char, std::set<std::size_t>>;
+using LeafMap = std::map<Token, std::set<std::size_t>>;
 
 
 struct ASTNode {
 	ASTNode* m_left = nullptr;
 	ASTNode* m_right = nullptr;
     ASTNode* m_par = nullptr;
-	char m_op;
+	Token m_token;
     std::size_t m_leaf_num = 0;
     std::size_t m_node_num = 0;
 
-    ASTNode(ASTNode* left, ASTNode* right, char op, 
+    ASTNode(ASTNode* left, ASTNode* right, Token token, 
         std::size_t node_num) :
-    m_left(left), m_right(right), m_op(op), m_node_num(node_num) {};
+    m_left(left), m_right(right), m_token(token), m_node_num(node_num) {};
 };
 
 ASTNode *get_leftmost (ASTNode *_root);

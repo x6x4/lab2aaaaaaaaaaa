@@ -2,4 +2,3 @@
 *.out
 *build
 *.cache
-regex.patch

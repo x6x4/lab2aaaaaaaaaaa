@@ -7,82 +7,94 @@
 #include "../regexTokenizer/regexTokenizer.h"
 
 
-void AST::insertInMap(char oper) {
+void AST::insertInMap(Token token) {
     RegexHelper rhelper;
     ++m_nodeCount;
 
-    if (rhelper.non_special(oper)) {
-        char_map[oper].insert(++m_leafCount);
+    if (token.kind() == Token::Kind::Char) {
+        leaf_map[token.getChar()].insert(++m_leafCount);
     }
 }
 
 //  GRAMMAR - make AST
 
-ASTNode* AST::insert(char oper, ASTNode* left, ASTNode* right) {
+ASTNode* AST::insert(Token token, ASTNode* left, ASTNode* right) {
 
-    ASTNode* newNode = new ASTNode(left, right, oper, m_nodeCount++);
+    ASTNode* newNode = new ASTNode(left, right, token, m_nodeCount++);
 
     if (left) left->m_par = newNode;
     if (right) right->m_par = newNode;
 
-    insertInMap(oper);
+    insertInMap(token);
 
     return newNode;
 }
 
 //  return root
-std::pair<ASTNode*, tokenString&> AST::parse_regex(tokenString &global_tokstream) {
-	auto [left, stream] = parse_alt(global_tokstream);
-	// Check
-	if (stream.curToken().kind() == Token::Kind::Alter) {
-		stream.movePtr();
-		auto [right, s2] = parse_regex(stream);
+ASTNode* AST::parse_regex(tokenString &global_tokstream) {
 
-		return {insert('|', left, right), s2};
-	} else return {left, stream};
+	auto left = parse_alt(global_tokstream);
+
+	if (!global_tokstream.eof() && global_tokstream.curToken().kind() == Token::Kind::Alter) {
+		global_tokstream.movePtr();
+		auto right = parse_regex(global_tokstream);
+
+		return insert('|', left, right);
+	} else return left;
 }
 
-std::pair<ASTNode*, tokenString&> AST::parse_alt(tokenString &global_tokstream) {
-    auto [left, changed_stream] = parse_concat(global_tokstream);
+ASTNode* AST::parse_alt(tokenString &global_tokstream) {
+
+    auto left = parse_unary(global_tokstream);
     
-    while (changed_stream.curToken().kind() == Token::Kind::Cat) {
-        changed_stream.movePtr();
-        auto [right, changed_stream2] = parse_concat(changed_stream);
+    while (!global_tokstream.eof() && global_tokstream.curToken().kind() == Token::Kind::Cat) {
+        global_tokstream.movePtr();
+        auto right = parse_unary(global_tokstream);
         left = insert('_', left, right);
-        changed_stream = changed_stream2;
     }
 
-    return {left, changed_stream};
+    return left;
 }
 
-std::pair<ASTNode*, tokenString&> AST::parse_concat(tokenString &global_tokstream) {
-    auto [left, changed_stream] = parse_char(global_tokstream);
-    if (changed_stream.curToken().isUnary()) {
-        char op = changed_stream.curToken().getChar();
-        changed_stream.movePtr();
-        return {insert(op, left), changed_stream};
-    } else return {left, changed_stream};
+ASTNode* AST::parse_unary(tokenString &global_tokstream) {
+
+    auto left = parse_subgroup(global_tokstream);
+
+    if (!global_tokstream.eof() && global_tokstream.curToken().isUnary()) {
+        global_tokstream.movePtr();
+        if (global_tokstream.curToken().kind() == Token::Kind::Kline)
+            return insert(global_tokstream.curToken(), left);
+        else if (global_tokstream.curToken().kind() == Token::Kind::ZeroOrOne)
+            return insert(Token::Kind::Alter, left, insert(Token::Kind::Eps));
+        else
+            throw std::runtime_error("Bad unary operator");
+    } else return left;
 }
 
 
-std::pair<ASTNode*, tokenString&> AST::parse_char(tokenString &global_tokstream) {
+ASTNode* AST::parse_subgroup(tokenString &global_tokstream) {
     RegexHelper rhelper;
 
     Token tok = global_tokstream.curToken();
     
     if (tok.kind() == Token::Kind::Char) {
         global_tokstream.movePtr(); 
-        return {insert(tok.getChar()), global_tokstream};
+        return insert(tok.getChar());
     } 
     else if (tok.kind() == Token::Kind::PriorStart) {
         global_tokstream.movePtr(); 
-        auto [expr, internal_stream] = parse_regex(global_tokstream);
-        if (internal_stream.curToken().kind() != Token::Kind::PriorFin) {
+        if (tok.kind() == Token::Kind::CaptStart) {
+            global_tokstream.movePtr();
+            if (global_tokstream.eof()) throw std::runtime_error("Bad capture group\n");
+            auto captGroupName = global_tokstream.curToken();
+        }
+        auto expr = parse_regex(global_tokstream);
+
+        if (global_tokstream.eof() || global_tokstream.curToken().kind() != Token::Kind::PriorFin) {
             throw std::runtime_error("Bad priority\n");
         } else {
-            internal_stream.movePtr();
-            global_tokstream.setPtr(internal_stream.getPtr()); 
-            return {expr, global_tokstream};
+            global_tokstream.movePtr();
+            return expr;
         }
     } else {
         throw std::runtime_error("Fatal error at lowest parsing level\n");
@@ -93,7 +105,7 @@ std::pair<ASTNode*, tokenString&> AST::parse_char(tokenString &global_tokstream)
 //  DEBUG OUTPUT
 
 void AST::printLeafMap() {
-    std::cout << char_map;
+    std::cout << leaf_map;
 }
 
 //  GRAPHVIZ
@@ -102,7 +114,7 @@ void printBT_Base(ASTNode *node, std::ofstream &file);
 
 void AST::printAST() {
 
-    std::ofstream file("tree_output/tree_output.dot");
+    std::ofstream file("/home/cracky/lab2aaaaaaaaaaa/tree_output/tree_output.dot");
     if (!file) {
         std::cout << "Error creating file" << std::endl;
         return;
@@ -117,7 +129,7 @@ void AST::printAST() {
 
     file.close();
 
-    system("dot -Tpng tree_output/tree_output.dot -o tree_output/tree_output.png");
+    system("dot -Tpng /home/cracky/lab2aaaaaaaaaaa/tree_output/tree_output.dot -o /home/cracky/lab2aaaaaaaaaaa/tree_output/tree_output.png");
 }
 
 void printBT_Base(ASTNode *node, std::ofstream &file) {
@@ -125,7 +137,7 @@ void printBT_Base(ASTNode *node, std::ofstream &file) {
 
     file << reinterpret_cast<uintptr_t>(node) << " [label=\"";
     if (node->m_leaf_num) file << node->m_leaf_num << ' ';
-    file << node->m_op << "\"];" << std::endl;
+    file << node->m_token << "\"];" << std::endl;
 
     if (node->m_left != nullptr) {
         file << reinterpret_cast<uintptr_t>(node) << " -> " << reinterpret_cast<uintptr_t>(node->m_left) << ";" << std::endl;

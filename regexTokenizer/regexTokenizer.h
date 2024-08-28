@@ -1,10 +1,11 @@
 #pragma once
 
 #include <cctype>
+#include <cstddef>
 #include <stdexcept>
 #include <string>
 #include <vector>
-
+#include <iostream>
 
 class RegexHelper {
 
@@ -68,7 +69,7 @@ public:
         Augment, 
         Eps,
         ZeroOrOne, 
-        MetaName, 
+        CaptureString, 
         Repeat, 
         PriorStart, 
         PriorFin
@@ -76,7 +77,7 @@ public:
 
     Token(Kind kind) : m_kind(kind) {}
     Token(char ch) : m_kind(Kind::Char), m_ch(ch) {}
-    Token(std::string str) : m_kind(Kind::MetaName), m_metaname(str) {}
+    Token(std::string str) : m_kind(Kind::CaptureString), m_Str(str) {}
     Token(int n) : m_kind(Kind::Repeat), repeats(n) {}
 
     Kind kind() const {return m_kind;}
@@ -85,20 +86,68 @@ public:
     bool isUnary() const {return (m_kind == Token::Kind::Kline) 
                                         || (m_kind == Token::Kind::ZeroOrOne);}
 
+    std::string Str() { return this->m_Str; }
+
+friend std::ostream& operator<<(std::ostream& os, const Token& token) {
+        switch (token.kind()) {
+            case Token::Kind::Char:
+                os << token.getChar();
+                break;
+            case Token::Kind::Alter:
+                os << "|";
+                break;
+            case Token::Kind::Cat:
+                os << "_";
+                break;
+            case Token::Kind::Kline:
+                os << "*";
+                break;
+            case Token::Kind::CaptStart:
+                os << "<";
+                break;
+            case Token::Kind::CaptFin:
+                os << ">";
+                break;
+            case Token::Kind::Augment:
+                os << "#";
+                break;
+            case Token::Kind::Eps:
+                os << "Eps";
+                break;
+            case Token::Kind::ZeroOrOne:
+                os << "?";
+                break;
+            case Token::Kind::CaptureString:
+                os << "CaptString: " << token.m_Str;
+                break;
+            case Token::Kind::Repeat:
+                os << "{" << token.repeats << "}";
+                break;
+            case Token::Kind::PriorStart:
+                os << "(";
+                break;
+            case Token::Kind::PriorFin:
+                os << ")";
+                break;
+        }
+        return os;
+    }
+
 private:
     Kind m_kind;
     char m_ch;
-    std::string m_metaname;
+    std::string m_Str;
     size_t repeats;
 };
 
 
 class tokenString {
     std::vector<Token> data;
-    int idx = 0;
+    size_t idx = 0;
 
 public:
     auto curToken() {
+        if (eof()) throw std::runtime_error("Token stream ended!");
         return data.at(idx);
     }
     void movePtr() {
@@ -107,14 +156,15 @@ public:
     void push_back(Token tok) {
         data.push_back(tok);
     }
-    void setPtr(int new_idx) {
-        if (new_idx < data.size())
-            idx = new_idx;
-        else
-            throw std::runtime_error("Bad token stream index");
+
+    bool eof() {
+        return (idx == data.size());
     }
-    int getPtr() const {
-        return idx;
+
+    friend std::ostream &operator<<(std::ostream &os, const tokenString& tstr) {
+        for (auto t : tstr.data)
+            os << t << ' ';
+        return os << '\n';
     }
 };
 

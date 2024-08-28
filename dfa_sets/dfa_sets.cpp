@@ -6,10 +6,10 @@
 #include <utility>
 #include <vector>
 
-using Dstates = std::map<state, std::size_t>;
+using Dstates = std::map<positionSet, std::size_t>;
 
 std::pair<bool, std::size_t> dstates_find 
-    (const Dstates& dstates, const state& key) {
+    (const Dstates& dstates, const positionSet& key) {
         for (const auto &d : dstates) {
             if (d.first == key) return {true, d.second};
         }
@@ -18,29 +18,29 @@ std::pair<bool, std::size_t> dstates_find
 
 DFA DFA_sets::makeDFA(const AST& ast) {
 
-    state s0 = firstpos.at(ast.root()->m_node_num-1);
+    positionSet s0 = firstpos.at(ast.root()->m_node_num-1);
     
-    std::map<state, std::size_t> unmarked = {{s0, 0}};
-    std::map<state, std::size_t> marked;
+    std::map<positionSet, std::size_t> unmarked = {{s0, 0}};
+    std::map<positionSet, std::size_t> marked;
 
     trans_table Dtran;
-    std::size_t cur_state = 0;
+    DFAState cur_state = 0;
     finStates FinStates;
     std::cout << "Followpos:\n" << followpos << std::endl;
     
     while (!unmarked.empty()) {
         auto cur_state_entry = *(unmarked.begin());
         //if (cur_state_entry.first.size() > 10) break;
-        marked.insert(cur_state_entry);
+        marked.emplace(cur_state_entry);
         unmarked.erase(cur_state_entry.first);
         
         std::cout << "T:" << cur_state_entry.first << std::endl;
 
-        for (const auto &cur_char_leaves : ast.charMap()) {
-            state U;
-            std::cout << "Char leaves:" << cur_char_leaves;
+        for (const auto &cur_leaves : ast.leafMap()) {
+            positionSet U;
+            std::cout << "Char leaves:" << cur_leaves;
             for (const auto &cur_leave : cur_state_entry.first) {
-                if (cur_char_leaves.second.find(cur_leave) != cur_char_leaves.second.end()) {
+                if (cur_leaves.second.find(cur_leave) != cur_leaves.second.end()) {
                     U += followpos.at(cur_leave-1);
                 }
             }
@@ -52,16 +52,16 @@ DFA DFA_sets::makeDFA(const AST& ast) {
 
                 if (U_entry == marked.end())
                     //  emplace
-                    U_entry = unmarked.insert({U, ++cur_state}).first;
+                    U_entry = unmarked.emplace(std::pair{U, ++cur_state}).first;
 
                 if (cur_state_entry.first.find(ast.leafCount()) != cur_state_entry.first.end())
-                    FinStates.insert(cur_state_entry.second);
+                    FinStates.emplace(cur_state_entry.second);
                 if (U.find(ast.leafCount()) != U.end())
-                    FinStates.insert(cur_state);
+                    FinStates.emplace(cur_state);
 
                 std::cout << "F:" << FinStates;
                 
-                Dtran.insert({{cur_state_entry.second, cur_char_leaves.first}, 
+                Dtran.emplace(std::pair{std::pair{cur_state_entry.second, cur_leaves.first}, 
                     U_entry->second});
             }
         }
@@ -85,11 +85,11 @@ void DFA_sets::calculate(ASTNode *root) {
 void DFA_sets::nullable_traversal (ASTNode *start) {
 
     if (!start) return; 
-    if (is_leaf(start)) nullable.at(start->m_node_num-1) = false;
-    else if (start->m_op == '*') nullable.at(start->m_node_num-1) = true;
-    else if (start->m_op == '|') nullable.at(start->m_node_num-1) = 
+    if (is_leaf(start)) nullable.at(start->m_node_num-1) = (start->m_token.kind() == Token::Kind::Eps);
+    else if (start->m_token.kind() == Token::Kind::Kline) nullable.at(start->m_node_num-1) = true;
+    else if (start->m_token.kind() == Token::Kind::Alter) nullable.at(start->m_node_num-1) = 
         nullable.at(start->m_left->m_node_num-1) || nullable.at(start->m_right->m_node_num-1);
-    else if (start->m_op == '_') nullable.at(start->m_node_num-1) = 
+    else if (start->m_token.kind() == Token::Kind::Cat) nullable.at(start->m_node_num-1) = 
         nullable.at(start->m_left->m_node_num-1) && nullable.at(start->m_right->m_node_num-1);
 
     if (start->m_par && start == start->m_par->m_left) 
@@ -103,20 +103,24 @@ void DFA_sets::firstpos_traversal (ASTNode *start) {
     if (!start) return; 
 
     if (is_leaf(start)) {
-        firstpos.at(start->m_node_num-1).insert(start->m_leaf_num);
+        if (start->m_token.kind() == Token::Kind::Eps) {
+            firstpos.at(start->m_node_num-1).clear();
+        } else {
+            firstpos.at(start->m_node_num-1).emplace(start->m_leaf_num);
+        }
     }
 
-    else if (start->m_op == '*') {
+    else if (start->m_token.kind() == Token::Kind::Kline) {
         ASTNode* child = get_nonnull_child(start);
         firstpos.at(start->m_node_num-1) = firstpos.at(child->m_node_num - 1);
     }
 
-    else if (start->m_op == '|') {
+    else if (start->m_token.kind() == Token::Kind::Alter) {
         firstpos.at(start->m_node_num-1) = 
             firstpos.at(start->m_left->m_node_num-1) + firstpos.at(start->m_right->m_node_num-1);
     }
 
-    else if (start->m_op == '_') {
+    else if (start->m_token.kind() == Token::Kind::Cat) {
 
         if (nullable.at(start->m_left->m_node_num-1))
             firstpos.at(start->m_node_num-1) = 
@@ -136,20 +140,24 @@ void DFA_sets::lastpos_traversal (ASTNode *start) {
     if (!start) return; 
 
     if (is_leaf(start)) {
-        lastpos.at(start->m_node_num-1).insert(start->m_leaf_num);
+        if (start->m_token.kind() == Token::Kind::Eps) {
+            lastpos.at(start->m_node_num-1).clear();
+        } else {
+            lastpos.at(start->m_node_num-1).emplace(start->m_leaf_num);
+        }
     }
 
-    else if (start->m_op == '*') {
+    else if (start->m_token.kind() == Token::Kind::Kline) {
         ASTNode* child = get_nonnull_child(start);
         lastpos.at(start->m_node_num-1) = lastpos.at(child->m_node_num - 1);
     }
 
-    else if (start->m_op == '|') {
+    else if (start->m_token.kind() == Token::Kind::Alter) {
         lastpos.at(start->m_node_num-1) = 
             lastpos.at(start->m_left->m_node_num-1) + lastpos.at(start->m_right->m_node_num-1);
     }
 
-    else if (start->m_op == '_') {
+    else if (start->m_token.kind() == Token::Kind::Cat) {
 
         if (nullable.at(start->m_right->m_node_num-1))
             lastpos.at(start->m_node_num-1) = 
@@ -168,12 +176,12 @@ void DFA_sets::followpos_traversal (ASTNode *start) {
 
     if (!start) return; 
 
-    else if (start->m_op == '_') {
+    else if (start->m_token.kind() == Token::Kind::Cat) {
         for (auto &&entry : lastpos.at(start->m_left->m_node_num-1))
             followpos.at(entry-1) += firstpos.at(start->m_right->m_node_num-1);
     }
 
-    else if (start->m_op == '*') {
+    else if (start->m_token.kind() == Token::Kind::Kline) {
         for (auto &&entry : lastpos.at(start->m_node_num-1))
             followpos.at(entry-1) += firstpos.at(start->m_node_num-1);
     }

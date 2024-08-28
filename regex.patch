@@ -1,0 +1,250 @@
+ +Node *AST::clone(Node* node) {
++    //  smart ptr
++    if(node == nullptr) {
++        return nullptr;
++    }
++    Node* l = clone(node->left);
++    Node* r = clone(node->right);
++    Node *newNode = new Node(l, r, node->op, ++data.nodeCount);
++    
++    if (newNode->left ) newNode->left ->par = newNode;
++    if (newNode->right) newNode->right->par = newNode;
++    
++    if (node->op.isLetter()) {
++        newNode->true_num = ++data.leafCount;
++        //  set? unordered
++    
++        auto entry = data.char_map.find(node->op);
++        if (entry != data.char_map.end()) {
++            entry->second.insert(newNode->true_num);
++        } else {
++            data.char_map.insert({node->op, {newNode->true_num}});
++        }
++    }
++    return newNode;
++}
++
+
+ 
+@@ -97,22 +152,76 @@ std::pair<Node*, char*> AST::parse_concat(char* start) {
+ std::pair<Node*, char*> AST::parse_R(char* start) {
+     char* s = start;
+     char c = *s;
+-    
++    Node* expr = nullptr;
+
+     } else if (c == '(') {
+         s++; 
+-        auto [expr, s2] = parse_regex(s);
++        
++        std::string meta = "";
++        
++        if (*s == '<') {
++            s++;
++            char* close = strchr(s, '>');
++            if (!close) {
++                throw std::runtime_error("Skobka gde pidor\n");
++            }
++            meta = std::string(s, close - s);
++            s = close + 1;
++        }
++
++        auto [expr_, s2] = parse_regex(s);
++        expr = expr_;
+         if (*s2 != ')') {
+             throw std::runtime_error("Skobka gde pidor\n");
+         } else {
+             s = s2 + 1; 
+-            return {expr, s};
+         }
++
++        if(meta != "") {
++            Node* metaInit  = insert(nullptr, nullptr, Op::MetaInit(meta));
++            Node* metaEnd = insert(nullptr, nullptr, Op::MetaEnd(meta));
++            expr = insert(insert(metaInit, expr, Op::Concat()), metaEnd, Op::Concat());
++        }
++    } else if (c == '<') {
++        s++;
++        char* close = strchr(s, '>');
++        if (!close) {
++            throw std::runtime_error("Skobka gde pidor\n");
++        }
++        auto meta = std::string(s, close - s);
++        s = close + 1;
++        expr = insert(nullptr, nullptr, Op::MetaUse(meta));
+     } else {
+         throw std::runtime_error("Nu ty i nasral\n");
+     }
++
++    if (*s == '{') {
++        s++;
++        unsigned rep = 0;
++        int n = 0;
++        if (sscanf(s, "%u%n", &rep, &n) == 0 || rep < 2 || n == 0) {
++            throw std::runtime_error("Nu ty i nasral\n");
++        }
++        s += n;
++        if(*s != '}') {
++            throw std::runtime_error("Skobka gde pidor\n");
++        }
++        s++;
++
++        auto* newExpr = expr;
++        for(unsigned i = 1; i < rep; i++) {
++            newExpr = insert(newExpr, clone(expr), Op::Concat());
++        }
++        expr = newExpr;
++        
++    }
++    return {expr, s};
+ }
+ 
+
++    Node *clone(Node* node);
+ 
+
++class Op {
++public:
++
++    bool isLetter() const {
++        switch (kind) {
++        case Kind::Alter:
++        case Kind::Concat:
++        case Kind::Kline:
++            return false;
++        case Kind::Letter:
++        case Kind::MetaInit:
++        case Kind::MetaEnd:
++        case Kind::MetaUse:
++        case Kind::Terminate:
++        case Kind::Epsilon:
++          return true;
++        }
++    }
+
++    static Op MetaInit (std::string name) { return Op(Kind::MetaInit, name); }
++    static Op MetaEnd  (std::string name) { return Op(Kind::MetaEnd, name); }
++    static Op MetaUse  (std::string name) { return Op(Kind::MetaUse , name); }
++
++
++    bool operator< (const Op& oth) const {
++        if (getKind() != oth.getKind()) {
++            return static_cast<uint8_t>(getKind()) < static_cast<uint8_t>(oth.getKind());
++        }
++        switch (getKind()) {
++        case Op::Kind::Letter:   
++            return getChar() < oth.getChar();
++
++        case Op::Kind::MetaInit:
++        case Op::Kind::MetaEnd: 
++        case Op::Kind::MetaUse:  
++            return getName() < oth.getName();
++        
++        case Op::Kind::Alter:
++        case Op::Kind::Concat:
++        case Op::Kind::Kline:
++        case Op::Kind::Terminate:
++            return false;
++          break;
++        case Kind::Epsilon:
++            return false;
++        }
++        return false;
++    }
++
++
+ 
+ struct Node {
+ 	Node* left = nullptr;
+ 	Node* right = nullptr;
+     Node* par = nullptr;
+-	char op;
++	Op op;
+     int num = 0;
+     std::size_t true_num = 0;
++    std::string name;
+ 
+-    Node(Node* _left, Node* _right, char oper, std::size_t _num) 
+-    : left(_left), right(_right), op(oper), num(_num) {}
++    Node(Node* _left, Node* _right, Op oper, std::size_t _num) 
++    : left(_left), right(_right), op(oper), num(_num), name("") {}
+ };
+ 
+ Node *get_leftmost (Node *_root);
+@@ -77,9 +177,9 @@ std::ostream &operator<<
+     return os << para.first << ' ' <<para.second;
+ }
+ 
+-template<typename T1, typename T2> 
++template<typename T1, typename T2, typename Cmp> 
+ std::ostream &operator<<
+-(std::ostream &os, const std::map<T1, T2> &mapa) {
++(std::ostream &os, const std::map<T1, T2, Cmp> &mapa) {
+     os << ' ';
+     for (const auto &e : mapa) {
+         os << e.first << ' ' << e.second << '\n';
+
+ 
+ class Regex;
+diff --git a/regex/regex.h b/regex/regex.h
+index 2f1a57e..aa58ca6 100644
+--- a/regex/regex.h
++++ b/regex/regex.h
+@@ -1,5 +1,6 @@
+ #pragma once
+ #include <cstddef>
++#include <stdexcept>
+ #include <string>
+ #include "../ast/ast.h"
+ #include "../dfa_sets/dfa_sets.h"
+@@ -32,11 +33,46 @@ public:
+ 
+         auto cur = regex.begin();
+         std::size_t cur_state = 0;
++        std::map<std::string, std::pair<decltype(cur), decltype(cur)>> captures;
+ 
+         //  iterative for 
+         while (cur != regex.end()) {
+-            auto cur_tran = dfa.Dtran.find({cur_state, *cur});
+-            if (cur_tran == dfa.Dtran.end()) return false;
++            auto cur_tran = dfa.Dtran.find({cur_state, Op::Letter(*cur)});
++            if (cur_tran == dfa.Dtran.end()) {
++                cur_tran = dfa.Dtran.lower_bound({cur_state, Op::MetaInit("")});
++                if (cur_tran == dfa.Dtran.end() || cur_tran->first.first != cur_state) return false;
++                Op op = cur_tran->first.second;
++                switch (op.getKind()) {
++                case Op::Kind::MetaInit:
++                    captures[op.getName()].first  = cur;
++                    break;
++                
++                case Op::Kind::MetaEnd:
++                    captures[op.getName()].second = cur;
++                    break;
++                
++                case Op::Kind::MetaUse:
++                {
++                    auto [begin, end] = captures.at(op.getName());
++                    while (begin != end) {
++                        if (*begin != *cur) return false;
++                        begin++;
++                        cur++;
++                    }
++                    break;
++                }
++
++                case Op::Kind::Letter:
++                case Op::Kind::Alter:
++                case Op::Kind::Concat:
++                case Op::Kind::Kline:
++                case Op::Kind::Terminate:
++
++                  throw std::runtime_error("Huita kakaya to");
++                }
++                cur_state = cur_tran->second;
++                continue;
++            }
+             cur_state = cur_tran->second;
+             cur++;
+         }
+
+

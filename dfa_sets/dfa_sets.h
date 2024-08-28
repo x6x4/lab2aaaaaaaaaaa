@@ -1,12 +1,15 @@
 #pragma once
 #include "../common/common.h"
 #include "../ast/ast.h"
+#include <cstddef>
 #include <set>
 
 
-using state = std::set<std::size_t>;
-using trans_table = std::map<std::pair<std::size_t, char>, std::size_t>;
-using finStates = std::set<std::size_t>;
+typedef std::size_t DFAState;
+
+using positionSet = std::set<std::size_t>;
+using trans_table = std::map<std::pair<DFAState, Token>, DFAState>;
+using finStates = std::set<DFAState>;
 
 class Regex;
 

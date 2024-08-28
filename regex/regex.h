@@ -10,6 +10,7 @@ class Regex {
 
 DFA m_dfa;
 
+
 public:
 
     Regex(const std::string &regex) : m_dfa (compile(regex)) {}
@@ -31,17 +32,31 @@ public:
     //  method dfa - transition by symbol, return cur_state
     //  check for end state
 
-    bool match(const std::string &regex) {
+    bool match(const std::string &sample) {
 
-        auto cur = regex.begin();
-        std::size_t cur_state = 0;
+        auto curIdx = 0;
+        DFAState cur_state = 0;
 
         //  iterative for 
-        while (cur != regex.end()) {
-            auto cur_tran = m_dfa.m_Dtran.find({cur_state, *cur});
+        while (curIdx != sample.size()) {
+            auto cur_tran = m_dfa.m_Dtran.find({cur_state, sample[curIdx]});
+            
             if (cur_tran == m_dfa.m_Dtran.end()) return false;
+
+            auto curTok = cur_tran->first.second;
+
+            if (curTok.kind() == Token::Kind::CaptureString) {
+                auto leftover = sample.substr(curIdx+1);
+                if (leftover.compare(0, curTok.Str().length(), curTok.Str()))
+                    return false;
+                
+                curIdx += leftover.length();
+                cur_state = cur_tran->second;
+                continue;
+            }
+
             cur_state = cur_tran->second;
-            cur++;
+            curIdx++;
         }
         if (m_dfa.m_FinStates.find(cur_state) != m_dfa.m_FinStates.end()) return true;
 
