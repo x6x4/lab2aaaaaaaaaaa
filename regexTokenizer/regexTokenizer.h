@@ -69,7 +69,7 @@ public:
         Augment, 
         Eps,
         ZeroOrOne, 
-        CaptureString, 
+        CaptStr, 
         Repeat, 
         PriorStart, 
         PriorFin
@@ -77,7 +77,8 @@ public:
 
     Token(Kind kind) : m_kind(kind) {}
     Token(char ch) : m_kind(Kind::Char), m_ch(ch) {}
-    Token(std::string str) : m_kind(Kind::CaptureString), m_Str(str) {}
+    Token(Kind kind, std::string str) : m_kind(kind), m_Str(str) {};
+    Token(std::string str) : m_kind(Kind::CaptStr), m_Str(str) {}
     Token(int n) : m_kind(Kind::Repeat), repeats(n) {}
 
     Kind kind() const {return m_kind;}
@@ -87,6 +88,10 @@ public:
                                         || (m_kind == Token::Kind::ZeroOrOne);}
 
     std::string Str() { return this->m_Str; }
+
+    bool operator< (const Token& other) const {
+        return true;
+    }
 
 friend std::ostream& operator<<(std::ostream& os, const Token& token) {
         switch (token.kind()) {
@@ -103,11 +108,14 @@ friend std::ostream& operator<<(std::ostream& os, const Token& token) {
                 os << "*";
                 break;
             case Token::Kind::CaptStart:
-                os << "<";
+                os << "<" << token.m_Str;
+                break;
+            case Token::Kind::CaptStr:
+                os << token.m_Str;
                 break;
             case Token::Kind::CaptFin:
                 os << ">";
-                break;
+                break;  
             case Token::Kind::Augment:
                 os << "#";
                 break;
@@ -116,9 +124,6 @@ friend std::ostream& operator<<(std::ostream& os, const Token& token) {
                 break;
             case Token::Kind::ZeroOrOne:
                 os << "?";
-                break;
-            case Token::Kind::CaptureString:
-                os << "CaptString: " << token.m_Str;
                 break;
             case Token::Kind::Repeat:
                 os << "{" << token.repeats << "}";

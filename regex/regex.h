@@ -34,7 +34,7 @@ public:
 
     bool match(const std::string &sample) {
 
-        auto curIdx = 0;
+        std::size_t curIdx = 0;
         DFAState cur_state = 0;
 
         //  iterative for 
@@ -45,7 +45,7 @@ public:
 
             auto curTok = cur_tran->first.second;
 
-            if (curTok.kind() == Token::Kind::CaptureString) {
+            if (curTok.kind() == Token::Kind::CaptStr) {
                 auto leftover = sample.substr(curIdx+1);
                 if (leftover.compare(0, curTok.Str().length(), curTok.Str()))
                     return false;

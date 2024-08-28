@@ -1,6 +1,7 @@
 
 #include "regexTokenizer.h"
 
+#include <cstddef>
 #include <iostream>
 #include <stdexcept>
 
@@ -17,21 +18,24 @@ tokenString RgxTokenizer::tokenize(const std::string &init_regex) {
 
     for (size_t i = 0; i < init_regex.length(); i++) {
 
-        if (init_regex[i] == '>') {
-            is_metaname = 0;
-            new_regex.push_back(metaname);
-            metaname = {};
-            continue;
-        }
-
-        if (is_metaname) {
-            metaname.push_back(init_regex[i]);
-            continue;
-        }
-
         if (init_regex[i] == '<') {
-            metaname = 1;
-            continue;
+
+                std::string substr = init_regex.substr(i+1);
+                std::size_t pos = substr.find('>');
+                if (pos == std::string::npos) throw std::runtime_error("Gde >");
+                metaname = substr.substr(0, pos);
+
+            if (i > 0 && init_regex[i-1] == '(') {
+                new_regex.push_back({Token::Kind::CaptStart, metaname});
+                new_regex.push_back(Token::Kind::CaptFin);
+                i = i + 1 + pos;
+                continue;
+            } 
+            else {
+                new_regex.push_back({Token::Kind::CaptStr, metaname});
+                i = i + 1 + pos;
+                continue;
+            }
         }
 
         if (init_regex[i] == '}') {
@@ -74,12 +78,6 @@ tokenString RgxTokenizer::tokenize(const std::string &init_regex) {
                 case '*':
                     new_regex.push_back(Token::Kind::Kline);
                     break;   
-                case '<':
-                    new_regex.push_back(Token::Kind::CaptStart);
-                    break; 
-                case '>':
-                    new_regex.push_back(Token::Kind::CaptFin);
-                    break; 
                 case '?':
                     new_regex.push_back(Token::Kind::ZeroOrOne);
                     break; 
@@ -90,7 +88,7 @@ tokenString RgxTokenizer::tokenize(const std::string &init_regex) {
                     new_regex.push_back(Token::Kind::PriorFin);
                     break; 
                 default:
-                    std::string s = "Incorrect char :";
+                    std::string s = "Incorrect char: ";
                     s.push_back(init_regex[i]);
                     throw std::runtime_error(s);
             }
