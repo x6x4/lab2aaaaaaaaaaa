@@ -26,7 +26,7 @@ DFA DFA_sets::makeDFA(const AST& ast) {
     trans_table Dtran;
     DFAState cur_state = 0;
     finStates FinStates;
-    std::cout << "Followpos:\n" << followpos << std::endl;
+    //std::cout << "Followpos:\n" << followpos << std::endl;
     
     while (!unmarked.empty()) {
         auto cur_state_entry = *(unmarked.begin());
@@ -34,17 +34,17 @@ DFA DFA_sets::makeDFA(const AST& ast) {
         marked.emplace(cur_state_entry);
         unmarked.erase(cur_state_entry.first);
         
-        std::cout << "T:" << cur_state_entry.first << std::endl;
+        //std::cout << "T:" << cur_state_entry.first << std::endl;
 
         for (const auto &cur_leaves : ast.leafMap()) {
             positionSet U;
-            std::cout << "Char leaves:" << cur_leaves;
+            //std::cout << "Char leaves:" << cur_leaves;
             for (const auto &cur_leave : cur_state_entry.first) {
                 if (cur_leaves.second.find(cur_leave) != cur_leaves.second.end()) {
                     U += followpos.at(cur_leave-1);
                 }
             }
-            std::cout << "U:" << U;
+            //std::cout << "U:" << U;
 
             if (!U.empty()) {
 
@@ -59,7 +59,7 @@ DFA DFA_sets::makeDFA(const AST& ast) {
                 if (U.find(ast.leafCount()) != U.end())
                     FinStates.emplace(cur_state);
 
-                std::cout << "F:" << FinStates;
+                //std::cout << "F:" << FinStates;
                 
                 Dtran.emplace(std::pair{std::pair{cur_state_entry.second, cur_leaves.first}, 
                     U_entry->second});
@@ -244,3 +244,62 @@ void DFA::printDFA_Base(std::ofstream &file) {
         << "shape=doublecircle" << "]" << ";" << std::endl;
 
 }
+
+#include <array>
+
+/*
+DFA DFA::inverse()  {
+
+    size_t nstates = std::max(m_Dtran.rbegin()->first.first, *m_FinStates.rbegin());
+    nstates++;
+
+    std::vector<std::array<size_t, 256>> trans(nstates);
+    for(size_t i = 0; i < nstates; ++i) {
+        trans[i].fill(nstates-1);
+    }
+
+    for(const auto& it : m_Dtran) {
+        trans[it.first.first][it.first.second.getChar()] = it.second;
+    }
+
+    trans_table ntt;
+
+    for(size_t i = 0; i < nstates; i++) {
+        for(size_t j = 0; j < 256; j++) {
+            ntt[std::make_pair(i, j)] = trans[i][j];
+        }
+    }
+
+    Dstates nfs;
+    for(size_t i = 0; i < nstates; ++i) {
+        if(!m_FinStates.contains(i)) {
+            nfs.insert(i);
+        } 
+    }
+
+
+    return DFA(std::move(ntt), std::move(nfs));
+}
+
+DFA DFA::operator*(const DFA& rhs)  {
+  size_t nstatesL = std::max(m_Dtran.rbegin()->first.first, *m_FinStates.rbegin());
+
+  auto getI = [=](size_t i, size_t j) -> size_t { return nstatesL * j + i; };
+
+  trans_table ntt;
+  for(const auto& it1 : m_Dtran) {
+    for(const auto& it2 : rhs.m_Dtran) {
+      if(it1.first.second == it2.first.second) {
+        ntt[{getI(it1.first.first, it2.first.first), it1.first.second}] = getI(it1.second, it2.second);
+      }
+    }
+  }
+
+  Dstates nfs;
+  for(const auto& it1 : m_FinStates) {
+    for(const auto& it2 : rhs.m_FinStates) {
+      nfs.insert(getI(it1, it2));
+    }
+  }
+  return DFA(std::move(ntt), std::move(nfs));
+}*/

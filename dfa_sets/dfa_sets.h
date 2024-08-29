@@ -20,6 +20,8 @@ public:
         : m_Dtran(std::move(Dtran)), m_FinStates(std::move(FinStates)) {};
 
     void printDFA();
+    //DFA inverse();
+    //DFA operator*(const DFA& rhs);
 
 private:    
     trans_table m_Dtran;

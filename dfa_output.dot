@@ -2,10 +2,6 @@ digraph DFA {
 rankdir="LR"
 node [shape=circle];
 0 -> 1 [label="a"];
-1 -> 2 [label="<first"];
-2 -> 2 [label="g"];
-2 -> 3 [label=">"];
-3 -> 4 [label="d"];
-4 -> 5 [label="first"];
-5[label="5"shape=doublecircle];
+0[label="0"shape=doublecircle];
+1[label="1"shape=doublecircle];
 }

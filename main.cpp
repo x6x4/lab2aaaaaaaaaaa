@@ -7,7 +7,7 @@
 
 int main(int argc, char** argv) {
     std::string regex_str, str_to_match;
-    std::ifstream file ("/home/cracky/lab2aaaaaaaaaaa/tests/shit.txt");
+    std::ifstream file (argv[1]);
     try {
         if (file.is_open()) ;
         else 
@@ -16,12 +16,17 @@ int main(int argc, char** argv) {
     catch(std::runtime_error &e) {
         std::cout << e.what() << std::endl;
     }
-    std::cin >> regex_str;
+
+    file >> regex_str;
 
     auto regex = Regex(regex_str);
-    std::cout << regex.match("agdg") << std::endl;
-    /*while (!file.eof()) {
-        file >> str_to_match;
-        std::cout << regex.match(str_to_match) << std::endl;
-    }*/
+    do {
+        str_to_match = {};
+        file >> str_to_match; 
+        //if (!str_to_match.empty()) {
+            std::cout << regex_str << ": " << str_to_match
+            << ": " << regex.match(str_to_match) << std::endl;
+        //}
+    } while (!str_to_match.empty());
+    std::cout << std::endl; 
 }

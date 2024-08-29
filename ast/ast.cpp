@@ -44,7 +44,7 @@ ASTNode* AST::parse_regex(tokenString &global_tokstream) {
 		global_tokstream.movePtr();
 		auto right = parse_regex(global_tokstream);
 
-		return insert('|', left, right);
+		return insert(Token::Kind::Alter, left, right);
 	} else return left;
 }
 

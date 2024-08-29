@@ -22,7 +22,7 @@ public:
         AST ast(regex_str);
     
         ast.printAST();
-        ast.printLeafMap();
+        //ast.printLeafMap();
 
         DFA_sets sets(ast);
         
@@ -68,6 +68,8 @@ public:
                         cur_state = next_capt_tran->second;
                         continue;
                     }
+
+                    return false;
                 }
 
             auto curTok = cur_tran->first.second;

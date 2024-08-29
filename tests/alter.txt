@@ -1,0 +1,5 @@
+a|b|cd
+ad 
+bcd
+aa
+cd

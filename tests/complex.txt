@@ -1,0 +1,7 @@
+a(b*|c)d?|gh
+acd
+agh
+gh
+ac
+abbbbd
+a

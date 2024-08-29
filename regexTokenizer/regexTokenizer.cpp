@@ -81,7 +81,7 @@ tokenString RgxTokenizer::tokenize(const std::string &init_regex) {
                 new_regex.push_back(init_regex[i+1]);
             }
             //  skip %c%
-            i += 3; 
+            i += 2; 
             if (i + 1 < init_regex.length()) {  // ???? #
                 new_regex.push_back(Token::Kind::Cat);
             }
