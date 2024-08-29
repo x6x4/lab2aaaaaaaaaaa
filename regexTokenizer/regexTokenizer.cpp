@@ -15,8 +15,28 @@ tokenString RgxTokenizer::tokenize(const std::string &init_regex) {
     std::string metaname;
     bool is_repeat = 0;
     std::string n_repeats;
+    bool is_paren = 0;
 
     for (size_t i = 0; i < init_regex.length(); i++) {
+
+        if (init_regex[i] == '(' && i + 1 < init_regex.length() && init_regex[i+1] == '<') {
+            continue;
+        }
+
+        if (init_regex[i] == '(') {
+            is_paren = 1;
+        }
+
+        if (init_regex[i] == ')' && !is_paren) {
+            new_regex.push_back(Token::Kind::Cat);
+            new_regex.push_back(Token::Kind::CaptFin);
+            new_regex.push_back(Token::Kind::Cat);
+            continue;
+        }
+
+        if (init_regex[i] == ')') {
+            is_paren = 0;
+        }
 
         if (init_regex[i] == '<') {
 
@@ -27,7 +47,7 @@ tokenString RgxTokenizer::tokenize(const std::string &init_regex) {
 
             if (i > 0 && init_regex[i-1] == '(') {
                 new_regex.push_back({Token::Kind::CaptStart, metaname});
-                new_regex.push_back(Token::Kind::CaptFin);
+                new_regex.push_back(Token::Kind::Cat);
                 i = i + 1 + pos;
                 continue;
             } 
@@ -72,7 +92,7 @@ tokenString RgxTokenizer::tokenize(const std::string &init_regex) {
             new_regex.push_back(init_regex[i]);
         else {
             switch (init_regex[i]) {
-                case '\\':
+                case '|':
                     new_regex.push_back(Token::Kind::Alter);
                     break;
                 case '*':

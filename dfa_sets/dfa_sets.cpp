@@ -212,7 +212,7 @@ std::ostream &operator<< (std::ostream &os, const DFA_sets &sets) {
 
 
 void DFA::printDFA() {
-    std::ofstream file("dfa_output.dot");
+    std::ofstream file("/home/cracky/lab2aaaaaaaaaaa/dfa_output.dot");
     if (!file) {
         std::cout << "Error creating file" << std::endl;
         return;
@@ -228,7 +228,7 @@ void DFA::printDFA() {
 
     file.close();
 
-    system("dot -Tpng dfa_output.dot -o dfa_output.png");
+    system("dot -Tpng /home/cracky/lab2aaaaaaaaaaa/dfa_output.dot -o /home/cracky/lab2aaaaaaaaaaa/dfa_output.png");
 }
 
 void DFA::printDFA_Base(std::ofstream &file) {

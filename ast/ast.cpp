@@ -8,11 +8,12 @@
 
 
 void AST::insertInMap(Token token) {
-    RegexHelper rhelper;
-    ++m_nodeCount;
 
-    if (token.kind() == Token::Kind::Char) {
-        leaf_map[token.getChar()].insert(++m_leafCount);
+    if (token.isLeaf()) {
+        if (leaf_map.find(token) == leaf_map.end())
+            leaf_map.insert({token, {++m_leafCount}});
+        else
+            leaf_map[token].insert(++m_leafCount);
     }
 }
 
@@ -20,7 +21,11 @@ void AST::insertInMap(Token token) {
 
 ASTNode* AST::insert(Token token, ASTNode* left, ASTNode* right) {
 
-    ASTNode* newNode = new ASTNode(left, right, token, m_nodeCount++);
+    ASTNode* newNode;
+    if (token.isLeaf()) 
+        newNode = new ASTNode(left, right, token, ++m_nodeCount, m_leafCount + 1);
+    else
+        newNode = new ASTNode(left, right, token, ++m_nodeCount);
 
     if (left) left->m_par = newNode;
     if (right) right->m_par = newNode;
@@ -50,7 +55,7 @@ ASTNode* AST::parse_alt(tokenString &global_tokstream) {
     while (!global_tokstream.eof() && global_tokstream.curToken().kind() == Token::Kind::Cat) {
         global_tokstream.movePtr();
         auto right = parse_unary(global_tokstream);
-        left = insert('_', left, right);
+        left = insert(Token::Kind::Cat, left, right);
     }
 
     return left;
@@ -61,10 +66,11 @@ ASTNode* AST::parse_unary(tokenString &global_tokstream) {
     auto left = parse_subgroup(global_tokstream);
 
     if (!global_tokstream.eof() && global_tokstream.curToken().isUnary()) {
+        auto tok = global_tokstream.curToken();
         global_tokstream.movePtr();
-        if (global_tokstream.curToken().kind() == Token::Kind::Kline)
-            return insert(global_tokstream.curToken(), left);
-        else if (global_tokstream.curToken().kind() == Token::Kind::ZeroOrOne)
+        if (tok.kind() == Token::Kind::Kline)
+            return insert(tok, left);
+        else if (tok.kind() == Token::Kind::ZeroOrOne)
             return insert(Token::Kind::Alter, left, insert(Token::Kind::Eps));
         else
             throw std::runtime_error("Bad unary operator");
@@ -81,13 +87,14 @@ ASTNode* AST::parse_subgroup(tokenString &global_tokstream) {
         global_tokstream.movePtr(); 
         return insert(tok.getChar());
     } 
+    if (tok.kind() == Token::Kind::CaptStart 
+        || tok.kind() == Token::Kind::CaptFin 
+            ||tok.kind() == Token::Kind::CaptStr) {
+        global_tokstream.movePtr();
+        return insert(tok);
+    }
     else if (tok.kind() == Token::Kind::PriorStart) {
         global_tokstream.movePtr(); 
-        if (tok.kind() == Token::Kind::CaptStart) {
-            global_tokstream.movePtr();
-            if (global_tokstream.eof()) throw std::runtime_error("Bad capture group\n");
-            auto captGroupName = global_tokstream.curToken();
-        }
         auto expr = parse_regex(global_tokstream);
 
         if (global_tokstream.eof() || global_tokstream.curToken().kind() != Token::Kind::PriorFin) {
@@ -96,7 +103,8 @@ ASTNode* AST::parse_subgroup(tokenString &global_tokstream) {
             global_tokstream.movePtr();
             return expr;
         }
-    } else {
+    } 
+    else {
         throw std::runtime_error("Fatal error at lowest parsing level\n");
     }
 }

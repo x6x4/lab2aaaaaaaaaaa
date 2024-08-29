@@ -20,8 +20,8 @@ struct ASTNode {
     std::size_t m_node_num = 0;
 
     ASTNode(ASTNode* left, ASTNode* right, Token token, 
-        std::size_t node_num) :
-    m_left(left), m_right(right), m_token(token), m_node_num(node_num) {};
+        std::size_t node_num, std::size_t leaf_num = 0) :
+    m_left(left), m_right(right), m_token(token), m_node_num(node_num), m_leaf_num(leaf_num) {};
 };
 
 ASTNode *get_leftmost (ASTNode *_root);

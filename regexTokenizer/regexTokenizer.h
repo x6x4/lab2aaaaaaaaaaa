@@ -90,7 +90,34 @@ public:
     std::string Str() { return this->m_Str; }
 
     bool operator< (const Token& other) const {
-        return true;
+        if (kind() != other.kind()) {
+            return static_cast<int>(kind()) < static_cast<int>(other.kind());
+        }
+        switch (kind()) {
+        case Kind::Char:   
+            return getChar() < other.getChar();
+
+        case Kind::CaptStart:
+        case Kind::CaptFin: 
+        case Kind::CaptStr:  
+            return false;
+        
+        default:
+            return false;
+        }
+    }
+
+    bool isLeaf() {
+        switch (m_kind) {
+            case Kind::Char:
+            case Kind::CaptStart:
+            case Kind::CaptFin:
+            case Kind::CaptStr:
+            case Kind::Augment:
+                return true;
+            default:
+                return false;
+        }
     }
 
 friend std::ostream& operator<<(std::ostream& os, const Token& token) {

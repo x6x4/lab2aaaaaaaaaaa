@@ -17,11 +17,10 @@ int main(int argc, char** argv) {
         std::cout << e.what() << std::endl;
     }
     std::cin >> regex_str;
-    RgxTokenizer rtr;
-    std::cout << rtr.tokenize(regex_str);
 
-    /*auto regex = Regex(regex_str);
-    while (!file.eof()) {
+    auto regex = Regex(regex_str);
+    std::cout << regex.match("agdg") << std::endl;
+    /*while (!file.eof()) {
         file >> str_to_match;
         std::cout << regex.match(str_to_match) << std::endl;
     }*/
