@@ -1,7 +1,14 @@
 digraph DFA {
 rankdir="LR"
 node [shape=circle];
-0 -> 1 [label="a"];
+0 -> 101 [label="a"];
+1 -> 99 [label="a"];
+99 -> 99 [label="b"];
+100 -> 99 [label="b"];
+101 -> 101 [label="b"];
+18446744073709551615 -> 99 [label="a"];
 0[label="0"shape=doublecircle];
 1[label="1"shape=doublecircle];
+99[label="99"shape=doublecircle];
+18446744073709551615[label="18446744073709551615"shape=doublecircle];
 }

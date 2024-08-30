@@ -20,3 +20,6 @@ add_subdirectory(regex)
 
 add_executable(a.out main.cpp)
 target_link_libraries(a.out regex)
+
+add_executable(b.out diff.cpp)
+target_link_libraries(b.out regex)

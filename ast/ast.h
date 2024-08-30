@@ -37,6 +37,27 @@ public:
     void printAST();
     void printLeafMap();
 
+    void clear(ASTNode** node) {
+        static int n = 0;
+        if (!(*node)) return;
+
+        if ((*node)->m_left == nullptr && (*node)->m_right == nullptr) {
+            delete *node;
+            n++;
+            *node = nullptr;
+            return;
+        }
+
+        clear(&(*node)->m_left);
+        clear(&(*node)->m_right);
+        delete *node;
+        *node = nullptr;
+    }
+
+    ~AST() {
+        clear(&m_root);
+    }
+
 private:
 
     ASTNode* parse_regex(tokenString &global_tokstream);

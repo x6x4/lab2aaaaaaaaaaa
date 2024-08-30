@@ -27,6 +27,8 @@ ASTNode* AST::insert(Token token, ASTNode* left, ASTNode* right) {
     else
         newNode = new ASTNode(left, right, token, ++m_nodeCount);
 
+    //std::cout << "Number: " << m_nodeCount << std::endl;
+
     if (left) left->m_par = newNode;
     if (right) right->m_par = newNode;
 
@@ -81,7 +83,9 @@ ASTNode* AST::parse_unary(tokenString &global_tokstream) {
 ASTNode* AST::parse_subgroup(tokenString &global_tokstream) {
     RegexHelper rhelper;
 
+    //std::cout << "Parse: " << std::endl;
     Token tok = global_tokstream.curToken();
+    //std::cout << tok << std::endl;
     
     if (tok.kind() == Token::Kind::Char) {
         global_tokstream.movePtr(); 

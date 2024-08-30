@@ -7,32 +7,36 @@
 #include "../regexTokenizer/regexTokenizer.h"
 
 
+inline DFA compile(const std::string &regex) {
+    tokenString regex_str = RgxTokenizer().tokenize(regex);
+
+    AST ast(regex_str);
+
+    ast.printAST();
+    //ast.printLeafMap();
+
+    DFA_sets sets(ast);
+    
+    DFA dfa = sets.makeDFA(ast);
+    //dfa.printDFA();
+    //auto invDFA = dfa.inverse();
+    //invDFA.printDFA();
+    return dfa;
+}
+
 class Regex {
 
 DFA m_dfa;
-
 
 public:
 
     Regex(const std::string &regex) : m_dfa (compile(regex)) {}
 
-    DFA compile(const std::string &regex) {
-        tokenString regex_str = RgxTokenizer().tokenize(regex);
-
-        AST ast(regex_str);
-    
-        ast.printAST();
-        //ast.printLeafMap();
-
-        DFA_sets sets(ast);
-        
-        DFA dfa = sets.makeDFA(ast);
-        dfa.printDFA();
-        return dfa;
-    }
-
+    Regex(DFA dfa) : m_dfa(dfa) {}
     //  method dfa - transition by symbol, return cur_state
     //  check for end state
+
+    DFA dfa() {return m_dfa; }
 
     bool match(std::string sample) {
 
@@ -79,6 +83,28 @@ public:
                     captureStr.push_back(curTok.getChar());
                 }
             }
+
+            cur_state = cur_tran->second;
+            curIdx++;
+        }
+        if (m_dfa.m_FinStates.find(cur_state) != m_dfa.m_FinStates.end()) return true;
+
+        return false;
+    }
+
+
+    bool match_notcapt(std::string sample) {
+
+        std::size_t curIdx = 0;
+        DFAState cur_state = 0;
+        bool capture_on = false;
+        std::string captureStr;
+
+        //  iterative for 
+        while (curIdx < sample.size()) {
+            auto cur_tran = m_dfa.m_Dtran.find({cur_state, sample[curIdx]});
+            
+            if (cur_tran == m_dfa.m_Dtran.end()) { return false;}
 
             cur_state = cur_tran->second;
             curIdx++;

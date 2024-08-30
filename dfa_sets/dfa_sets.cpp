@@ -1,4 +1,6 @@
 #include "dfa_sets.h"
+#include <algorithm>
+#include <cctype>
 #include <cstddef>
 #include <fstream>
 #include <iostream>
@@ -67,9 +69,13 @@ DFA DFA_sets::makeDFA(const AST& ast) {
         }
     }
 
-    std::cout << std::endl << Dtran;
+    //std::cout << "F:" << FinStates;
 
-    return DFA(std::move(Dtran), std::move(FinStates));
+    //std::cout << "Cur: " << cur_state << std::endl;
+
+    //std::cout << std::endl << Dtran;
+
+    return DFA(std::move(Dtran), std::move(FinStates), cur_state);
 }
 
 
@@ -247,40 +253,77 @@ void DFA::printDFA_Base(std::ofstream &file) {
 
 #include <array>
 
-/*
-DFA DFA::inverse()  {
-
-    size_t nstates = std::max(m_Dtran.rbegin()->first.first, *m_FinStates.rbegin());
-    nstates++;
-
-    std::vector<std::array<size_t, 256>> trans(nstates);
-    for(size_t i = 0; i < nstates; ++i) {
-        trans[i].fill(nstates-1);
-    }
-
-    for(const auto& it : m_Dtran) {
-        trans[it.first.first][it.first.second.getChar()] = it.second;
-    }
-
-    trans_table ntt;
-
-    for(size_t i = 0; i < nstates; i++) {
-        for(size_t j = 0; j < 256; j++) {
-            ntt[std::make_pair(i, j)] = trans[i][j];
-        }
-    }
-
-    Dstates nfs;
-    for(size_t i = 0; i < nstates; ++i) {
-        if(!m_FinStates.contains(i)) {
-            nfs.insert(i);
+DFA DFA::inverse() const {
+    // Create a new DFA with the same states, but reversed accept and non-accept states.
+    trans_table new_Dtran = m_Dtran;
+    finStates new_FinStates;
+    for (DFAState state = 0; state < size() + 1; state++) {
+        if (m_FinStates.count(state) == 0) {
+            new_FinStates.insert(state);
         } 
     }
 
+    // Create the dead state
+    DFAState deadState = -1; // New state index
+    new_FinStates.insert(deadState);
 
-    return DFA(std::move(ntt), std::move(nfs));
+    //std::cout << "F:" << new_FinStates;
+    
+    //new_Dtran[std::make_pair(deadState, Token{})] = deadState; // Transition to self
+    for (DFAState state = 0; state < size() + 1; state++) {
+        for (int i = 0; i < 256; i++) {
+            char ch = i;
+            if (new_Dtran.find({state, ch}) == new_Dtran.end() || new_FinStates.count(state) == 0) {
+                if (isprint(ch) && (ch != '"') && (ch != '\\')) {
+                    new_Dtran.insert({{state, Token(char(i))}, deadState});
+                    new_Dtran.insert({{deadState, Token(char(i))}, deadState});
+                }
+            }
+        }
+    }
+
+    //std::cout << std::endl << new_Dtran;
+
+    return DFA(new_Dtran, new_FinStates, size() + 1);
 }
 
+
+DFA DFA::operator*(const DFA& rhs) const {
+    // Create a new DFA with a new transition table and final states
+    trans_table new_Dtran;
+    finStates new_FinStates;
+
+    // Combine the final states of both DFAs
+    for (auto const& state : m_FinStates) {
+        new_FinStates.insert(state);
+    }
+    for (auto const& state : rhs.m_FinStates) {
+        new_FinStates.insert(state);
+    }
+
+    std::size_t new_second_state;
+
+// Iterate through all possible combinations of states from both DFAs
+for (const auto& trans1_token1 : m_Dtran) {
+    for (const auto& trans2_token2 : rhs.m_Dtran) {
+        // Check if transitions for the same token exist in both DFAs
+        if (trans1_token1.first.second.getChar() == trans2_token2.first.second.getChar()) {
+            // Multiply the states and create a new transition
+            std::size_t new_first_state = trans1_token1.first.first * 100 + trans2_token2.first.first;
+            std::size_t new_second_state = trans1_token1.second * 100 + trans2_token2.second;
+            if (m_FinStates.count(trans1_token1.second) && rhs.m_FinStates.count(trans2_token2.second))
+                new_FinStates.insert(new_second_state);
+            new_Dtran.insert({{new_first_state, trans1_token1.first.second}, new_second_state});
+        }
+    }
+}
+
+
+    // Return the new DFA
+    return DFA(new_Dtran, new_FinStates, new_second_state+1);
+}
+
+/*
 DFA DFA::operator*(const DFA& rhs)  {
   size_t nstatesL = std::max(m_Dtran.rbegin()->first.first, *m_FinStates.rbegin());
 

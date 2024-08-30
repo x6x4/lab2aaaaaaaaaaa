@@ -1,0 +1,5 @@
+a(<first>g*)d<first>c<first>
+adc
+agdgcg
+aggdggcgg
+agggdgggcggg

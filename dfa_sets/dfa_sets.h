@@ -16,16 +16,22 @@ class Regex;
 class DFA {
 friend Regex;
 public:
-    DFA(trans_table Dtran, finStates FinStates) 
-        : m_Dtran(std::move(Dtran)), m_FinStates(std::move(FinStates)) {};
+    DFA(trans_table Dtran, finStates FinStates, std::size_t states_num) 
+        : m_Dtran(std::move(Dtran)), m_FinStates(std::move(FinStates)),
+        m_states_num(states_num) {};
 
     void printDFA();
-    //DFA inverse();
-    //DFA operator*(const DFA& rhs);
+    std::size_t size() const {return m_states_num;}
+    DFA inverse() const;
+    DFA operator*(const DFA& rhs) const;
+    DFA diff(const DFA& rhs) const {
+        return *this * rhs.inverse();
+    }
 
 private:    
     trans_table m_Dtran;
     finStates m_FinStates;
+    std::size_t m_states_num;
 
     void printDFA_Base(std::ofstream &file);
     

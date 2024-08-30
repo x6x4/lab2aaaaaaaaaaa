@@ -1,4 +1,6 @@
 a*
 aaa
 b
+a
 an
+aaaaad
